@@ -7,24 +7,16 @@
  * ╚══════════════════════════════════════════════════════════════════╝
  */
 
-import { genkit, z } from "genkit";
-import { googleAI } from "@genkit-ai/google-genai";
+import { z } from "genkit";
 import { startFlowServer } from "@genkit-ai/express";
+import { ai } from "./ai";
+import { analyzeProfileFlow } from "./onboarding";
+import { travelAssistantFlow } from "./agent";
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 1 ▸ Initialize Genkit with the Google Gemini Plugin
+// 1 ▸ Original Itinerary Generator Schema
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-const ai = genkit({
-  plugins: [googleAI()],
-  model: "googleai/gemini-2.5-flash", // Default model for all flows
-});
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 2 ▸ Zod Schemas — Strict Structured Output Contract
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-/** A single point of interest within a day. */
 const PointOfInterestSchema = z.object({
   name: z
     .string()
@@ -49,7 +41,6 @@ const PointOfInterestSchema = z.object({
     .describe("Insider tip or practical advice for the visitor"),
 });
 
-/** A single day within the multi-day itinerary. */
 const DaySchema = z.object({
   dayNumber: z.number().int().positive().describe("Sequential day number (1, 2, 3…)"),
   title: z.string().describe("A catchy title summarizing the day (e.g. 'Underground Cities & Fairy Chimneys')"),
@@ -61,7 +52,6 @@ const DaySchema = z.object({
     .describe("Ordered list of places to visit this day"),
 });
 
-/** The complete multi-day travel itinerary — top-level output schema. */
 const ItinerarySchema = z.object({
   tripTitle: z
     .string()
@@ -90,22 +80,12 @@ const ItinerarySchema = z.object({
     .describe("Essential items to pack for this specific trip"),
 });
 
-/** Input schema for the flow — the user's natural-language prompt. */
 const ItineraryInputSchema = z.object({
   userPrompt: z
     .string()
     .min(10)
     .describe("Natural-language travel request (e.g. 'I want a 3-day history trip to Cappadocia')"),
 });
-
-// Export types for downstream consumers (Flutter client, Data Connect, etc.)
-export type PointOfInterest = z.infer<typeof PointOfInterestSchema>;
-export type Day = z.infer<typeof DaySchema>;
-export type Itinerary = z.infer<typeof ItinerarySchema>;
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 3 ▸ Genkit Flow — generateItineraryFlow
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 export const generateItineraryFlow = ai.defineFlow(
   {
@@ -114,10 +94,9 @@ export const generateItineraryFlow = ai.defineFlow(
     outputSchema: ItinerarySchema,
   },
   async (input) => {
-    // ── Step 1: Build the system prompt ──────────────────────────
     const systemPrompt = `You are ANA (Anatolian Navigator AI), a world-class travel concierge 
 specializing in Türkiye and the broader Anatolian region. You craft deeply personalized, 
-culturally rich travel itineraries. Your tone is warm, knowledgeable, and inspiring.
+culturally rich travel itineraries. Your tone is warm, inspiring, and authoritative.
 
 Rules:
 - Generate a day-by-day itinerary that matches the traveler's request exactly.
@@ -127,72 +106,21 @@ Rules:
 - Packing recommendations must be specific to the destination and activities.
 - All output MUST conform strictly to the provided JSON schema.`;
 
-    // ── Step 2: Call the LLM with structured output ─────────────
     const { output } = await ai.generate({
       system: systemPrompt,
       prompt: input.userPrompt,
       output: {
         schema: ItinerarySchema,
       },
-      // Optional: fine-tune generation parameters
       config: {
-        temperature: 0.9, // Creative but coherent
+        temperature: 0.95,
         maxOutputTokens: 8192,
       },
     });
 
-    // Genkit validates the response against ItinerarySchema automatically.
-    // If the model returns malformed JSON, Genkit will throw a structured error.
     if (!output) {
       throw new Error("LLM returned an empty response — no itinerary generated.");
     }
-
-    // ── Step 3: [PLACEHOLDER] Save to Firebase Data Connect ─────
-    //
-    // TODO: Inject Firebase Data Connect (PostgreSQL) logic here.
-    //
-    // Example pseudocode:
-    // ─────────────────────────────────────────────────────────────
-    // import { getDataConnect } from 'firebase/data-connect';
-    //
-    // const dc = getDataConnect({ connector: 'travelanatolia' });
-    //
-    // // 1. Insert the top-level itinerary record
-    // const itineraryRef = await dc.mutation('CreateItinerary', {
-    //   tripTitle:    output.tripTitle,
-    //   destination:  output.destination,
-    //   totalDays:    output.totalDays,
-    //   overview:     output.overview,
-    //   bestTime:     output.bestTimeToVisit,
-    //   packing:      output.packingRecommendations,
-    //   userId:       '<from-auth-context>',
-    //   createdAt:    new Date().toISOString(),
-    // });
-    //
-    // // 2. Insert each day + its points of interest
-    // for (const day of output.days) {
-    //   const dayRef = await dc.mutation('CreateDay', {
-    //     itineraryId: itineraryRef.id,
-    //     dayNumber:   day.dayNumber,
-    //     title:       day.title,
-    //     summary:     day.summary,
-    //   });
-    //
-    //   for (const poi of day.pointsOfInterest) {
-    //     await dc.mutation('CreatePointOfInterest', {
-    //       dayId:       dayRef.id,
-    //       name:        poi.name,
-    //       description: poi.description,
-    //       time:        poi.time,
-    //       category:    poi.category,
-    //       duration:    poi.estimatedDurationMinutes,
-    //       tips:        poi.tips ?? null,
-    //     });
-    //   }
-    // }
-    //
-    // console.log(`✅ Itinerary saved: ${itineraryRef.id}`);
-    // ─────────────────────────────────────────────────────────────
 
     console.log(`🗺️  Generated itinerary: "${output.tripTitle}" — ${output.totalDays} days in ${output.destination}`);
     return output;
@@ -200,15 +128,19 @@ Rules:
 );
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 4 ▸ Start the Express-based Flow Server
+// 2 ▸ Start Express server hosting all three flows
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 startFlowServer({
-  flows: [generateItineraryFlow],
+  flows: [
+    generateItineraryFlow,
+    analyzeProfileFlow,
+    travelAssistantFlow,
+  ],
   port: 4000,
   cors: {
     origin: "*", // Lock this down in production
   },
 });
 
-console.log("🚀 TravelAnatolia Agentic Core is live on http://localhost:4000");
+console.log("🚀 TravelAnatolia V2 Agentic Core is live on http://localhost:4000");

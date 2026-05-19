@@ -8,20 +8,27 @@
     "dev": "genkit start -- npx tsx --watch src/index.ts",
     "start": "node lib/index.js"
   },
-  "keywords": ["genkit", "travel", "ai", "anatolia"],
+  "keywords": [
+    "genkit",
+    "travel",
+    "ai",
+    "anatolia"
+  ],
   "license": "UNLICENSED",
   "dependencies": {
-    "genkit": "^1.33.0",
-    "@genkit-ai/google-genai": "^1.33.0",
     "@genkit-ai/express": "^1.33.0",
+    "@genkit-ai/google-genai": "^1.33.0",
+    "dotenv": "^17.4.2",
     "express": "^4.21.0",
+    "genkit": "^1.33.0",
+    "neo4j-driver": "^6.0.1",
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.0.0",
     "genkit-cli": "^1.33.0",
     "tsx": "^4.19.0",
-    "typescript": "^5.6.0",
-    "@types/express": "^5.0.0",
-    "@types/node": "^22.0.0"
+    "typescript": "^5.6.0"
   }
 }
