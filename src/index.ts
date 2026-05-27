@@ -137,10 +137,10 @@ startFlowServer({
     analyzeProfileFlow,
     travelAssistantFlow,
   ],
-  port: 4000,
+  port: 4005,
   cors: {
     origin: "*", // Lock this down in production
   },
 });
 
-console.log("🚀 TravelAnatolia V2 Agentic Core is live on http://localhost:4000");
+console.log("🚀 TravelAnatolia V2 Agentic Core is live on http://localhost:4005");

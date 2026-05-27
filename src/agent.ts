@@ -172,8 +172,7 @@ Your Guidelines:
     try {
       const response = await ai.generate({
         system: systemPrompt,
-        history: genkitHistory.slice(0, -1), // Pass past history
-        prompt: input.message, // Pass current message
+        messages: genkitHistory,
         tools: [
           getUserProfileTool,
           recommendExperiencesTool,
