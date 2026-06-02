@@ -29,7 +29,7 @@ flowchart TB
     end
 
     %% API Flow Server
-    subgraph Server [Express Flow Server :4000]
+    subgraph Server [Express Flow Server :4005]
         direction TB
         F1[generateItineraryFlow<br/><i>Strict Zod Itinerary</i>]
         F2[analyzeProfileFlow<br/><i>4-Question Profiler</i>]
@@ -110,10 +110,10 @@ LIMIT 5
 
 ## 🛠️ REST Endpoints & Schemas
 
-The Express server boots on port **`4000`** and handles input/output payloads wrapped inside standard Genkit `{ "data": ... }` structures.
+The Express server boots on port **`4005`** and handles input/output payloads wrapped inside standard Genkit `{ "data": ... }` structures.
 
 ### 1️⃣ Onboarding Profile Analyzer (`/analyzeProfileFlow`)
-*   **Request URL:** `POST http://localhost:4000/analyzeProfileFlow`
+*   **Request URL:** `POST http://localhost:4005/analyzeProfileFlow`
 *   **Payload Schema (`OnboardingAnswersSchema`):**
     ```typescript
     {
@@ -140,7 +140,7 @@ The Express server boots on port **`4000`** and handles input/output payloads wr
     ```
 
 ### 2️⃣ Persistent Chat Concierge (`/travelAssistantFlow`)
-*   **Request URL:** `POST http://localhost:4000/travelAssistantFlow`
+*   **Request URL:** `POST http://localhost:4005/travelAssistantFlow`
 *   **Payload Schema (`ChatInputSchema`):**
     ```typescript
     {
@@ -202,7 +202,7 @@ Start the local server and active developer environment:
 ```bash
 npm run dev
 ```
-The server will bind to `http://localhost:4000` and launch the interactive Genkit Developer console.
+The server will bind to `http://localhost:4005` and launch the interactive Genkit Developer console.
 
 ### 6. Run Automated Verification Suite
 To execute an end-to-end simulation of profile registration, graph matching, and reservation booking in isolation, run:
@@ -216,7 +216,7 @@ npx tsx src/verify.ts
 
 ### Test Profile Creation
 ```bash
-curl -X POST http://localhost:4000/analyzeProfileFlow \
+curl -X POST http://localhost:4005/analyzeProfileFlow \
   -H "Content-Type: application/json" \
   -d '{
     "data": {
